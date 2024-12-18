@@ -1,0 +1,125 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pg-admin-secret-tls
+data:
+  tls.crt: Y2VydGlmaWNhdGU= #certificate
+  tls.key: a2V5 #key
+type: kubernetes.io/tls
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pg-admin-secrets
+  labels:
+    app: pgadmin
+type: Opaque
+data:
+  PGADMIN_DEFAULT_PASSWORD: YWRtaW4= #admin
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pg-admin-configmap
+  labels:
+    app: pgadmin
+data:
+  PGADMIN_DEFAULT_EMAIL: "admin@admin.com"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgadmin
+  labels:
+    app: pgadmin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pgadmin
+  template:
+    metadata:
+      labels:
+        app: pgadmin
+    spec:
+      containers:
+        - name: pgadmin
+          image: dpage/pgadmin4:latest
+          ports:
+            - containerPort: 80
+          env:
+            - name: PGADMIN_DEFAULT_EMAIL
+              valueFrom:
+                configMapKeyRef:
+                  name: pg-admin-configmap
+                  key: PGADMIN_DEFAULT_EMAIL
+            - name: PGADMIN_DEFAULT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pg-admin-secrets
+                  key: PGADMIN_DEFAULT_PASSWORD
+          livenessProbe:
+            httpGet:
+              path: /login
+              port: 80
+            initialDelaySeconds: 45
+            periodSeconds: 15
+            failureThreshold: 2
+          readinessProbe:
+            httpGet:
+              path: /login
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 2
+          volumeMounts:
+            - name: pgadmin-storage
+              mountPath: /var/lib/pgadmin
+      volumes:
+        - name: pgadmin-storage
+          persistentVolumeClaim:
+            claimName: pgadmin-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgadmin
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+  selector:
+    app: pgadmin
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pgadmin-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pgadmin-ingress
+spec:
+  tls:
+    #- hosts:
+    - secretName: pg-admin-secret-tls
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: pgadmin
+                port:
+                  number: 80

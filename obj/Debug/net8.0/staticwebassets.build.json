@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "Zw1dwQNcVR3qjIaZAUwff549e/VbxCjYB/82dD0XfsM=",
+  "Source": "TestWebApiClient",
+  "BasePath": "_content/TestWebApiClient",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}

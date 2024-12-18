@@ -1,0 +1,98 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: test-docker-app-secret-tls
+data:
+  tls.crt: Y2VydGlmaWNhdGU= #certificate
+  tls.key: a2V5 #key
+type: kubernetes.io/tls
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-docker-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-docker-app
+  template:
+    metadata:
+      labels:
+        app: test-docker-app
+    spec:
+      containers:
+        - name: test-docker-app
+          image: mal91r/test-docker-app:4
+          imagePullPolicy: Always
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secrets
+                  key: POSTGRES_PASSWORD
+            - name: DB_HOST
+              value: "postgres"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secrets
+                  key: POSTGRES_USER
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-configmap
+                  key: POSTGRES_DB
+          ports:
+            - containerPort: 8080
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-docker-app
+spec:
+  type: ClusterIP
+  selector:
+    app: test-docker-app
+  ports:
+    - port: 8080
+      protocol: TCP
+      targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: test-docker-app
+spec:
+  tls:
+    #- hosts:
+    - secretName: test-docker-app-secret-tls
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /swagger
+            pathType: Prefix
+            backend:
+              service:
+                name:  test-docker-app
+                port:
+                  number: 8080
+          - path: /MyController
+            pathType: Prefix
+            backend:
+              service:
+                name: test-docker-app
+                port:
+                  number: 8080
+
