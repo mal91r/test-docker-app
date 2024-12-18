@@ -75,11 +75,13 @@ metadata:
   name: test-docker-app
 spec:
   tls:
-    #- hosts:
-    - secretName: test-docker-app-secret-tls
+    - hosts:
+        - my-app.local
+      secretName: test-docker-app-secret-tls
   ingressClassName: nginx
   rules:
-    - http:
+    - host: my-app.local
+      http:
         paths:
           - path: /swagger
             pathType: Prefix

@@ -110,11 +110,13 @@ metadata:
   name: pgadmin-ingress
 spec:
   tls:
-    #- hosts:
-    - secretName: pg-admin-secret-tls
+    - hosts:
+        - pg-admin.local
+      secretName: pg-admin-secret-tls
   ingressClassName: nginx
   rules:
-    - http:
+    - host: pg-admin.local
+      http:
         paths:
           - path: /
             pathType: Prefix
